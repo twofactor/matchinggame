@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=480, user-scalable=no" />
     <title>Basic Sandwich Stacker</title>
     <style>
       canvas {
@@ -143,12 +143,19 @@
         requestAnimationFrame(gameLoop);
       }
 
-      canvas.addEventListener("mousemove", (e) => {
+      function updatePosition(e) {
+        let clientX;
+        if (e.type === "touchmove") {
+          clientX = e.touches[0].clientX;
+        } else {
+          clientX = e.clientX;
+        }
         stacker.x =
-          e.clientX -
-          canvas.getBoundingClientRect().left -
-          stackerImg.width / 2;
-      });
+          clientX - canvas.getBoundingClientRect().left - stackerImg.width / 2;
+      }
+
+      canvas.addEventListener("mousemove", updatePosition);
+      canvas.addEventListener("touchmove", updatePosition);
 
       gameLoop();
     </script>
