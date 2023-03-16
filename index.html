@@ -79,8 +79,13 @@
       const clearTsumsSound = new Audio("fly-spit.m4a");
 
       function startGame() {
-        clearTsumsSound.loop = true;
-        clearTsumsSound.play();
+        selectSound.play();
+        selectSound.pause();
+        selectSound.currentTime = 0;
+
+        clearSound.play();
+        clearSound.pause();
+        clearSound.currentTime = 0;
       }
 
       const startGameButton = document.getElementById("start-game");
