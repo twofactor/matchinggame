@@ -65,6 +65,9 @@
     </style>
   </head>
   <body>
+    <audio id="select-sound" src="select-sound.mp3" preload="auto"></audio>
+    <audio id="clear-sound" src="clear-sound.mp3" preload="auto"></audio>
+
     <div id="game-container">
       <div class="score" id="score-display">Score: 0</div>
 
@@ -72,6 +75,7 @@
         <canvas id="overlay-canvas"></canvas>
       </div>
     </div>
+    <button id="start-game">Start Game</button>
 
     <script>
       const selectTsumSound = new Audio("text.m4a");
