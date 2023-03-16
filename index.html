@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Kirby Tsum Tsum Game</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=VT323&display=swap"
+      rel="stylesheet"
+    />
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.14.2/matter.min.js"></script>
+    <style>
+      body {
+        background-image: url("background.png");
+        background-repeat: no-repeat;
+        background-size: 512px 448px;
+      }
+
+      #game-board {
+        display: grid;
+        grid-template-columns: repeat(6, 50px);
+        grid-template-rows: repeat(6, 50px);
+        grid-gap: 5px;
+        position: relative;
+        margin-top: 45px;
+        margin-left: 55px;
+      }
+      .tsum {
+        width: 50px;
+        height: 50px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-family: Arial, sans-serif;
+        font-size: 24px;
+        font-weight: bold;
+        border-radius: 50%;
+        cursor: pointer;
+        user-select: none;
+      }
+
+      #overlay-canvas {
+        position: absolute;
+        top: 0;
+        left: 0;
+      }
+
+      .score {
+        font-family: "VT323", monospace;
+        color: white;
+        font-size: 24px;
+        font-weight: bold;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="score" id="score-display">Score: 0</div>
+
+    <div id="game-board"><canvas id="overlay-canvas"></canvas></div>
+    <script>
+      const gameBoard = document.getElementById("game-board");
+      const numRows = 4;
+      const numCols = 7;
+
+      let totalScore = 0;
+
+      const Engine = Matter.Engine;
+      const Render = Matter.Render;
+      const World = Matter.World;
+      const Bodies = Matter.Bodies;
+      const Body = Matter.Body;
+      const Composite = Matter.Composite;
+      const engine = Engine.create();
+      const Events = Matter.Events;
+
+      function updateScoreDisplay(score) {
+        const scoreDisplay = document.getElementById("score-display");
+        scoreDisplay.textContent = "Score: " + score;
+      }
+
+      function drawLineBetweenTsums(context, tsum1, tsum2) {
+        context.beginPath();
+        context.moveTo(tsum1.circle.position.x, tsum1.circle.position.y);
+        context.lineTo(tsum2.circle.position.x, tsum2.circle.position.y);
+        context.strokeStyle = "white";
+        context.lineWidth = 4;
+        context.stroke();
+      }
+
+      Events.on(engine, "beforeRender", () => {
+        const overlayCanvas = document.getElementById("overlay-canvas");
+        const overlayContext = overlayCanvas.getContext("2d");
+        overlayContext.clearRect(
+          0,
+          0,
+          overlayCanvas.width,
+          overlayCanvas.height
+        );
+
+        for (let i = 0; i < selectedTsums.length - 1; i++) {
+          drawLineBetweenTsums(
+            overlayContext,
+            selectedTsums[i],
+            selectedTsums[i + 1]
+          );
+        }
+      });
+
+      const letterColors = {
+        A: {
+          color: "red",
+          imageUrl: "./kirby.png",
+        },
+        B: {
+          color: "green",
+          imageUrl: "./bronto.png",
+        },
+        C: {
+          color: "blue",
+          imageUrl: "./waddledoo.png",
+        },
+        D: {
+          color: "yellow",
+          imageUrl: "./waddledee.png",
+        },
+      };
+
+      const tsumTypes = Object.keys(letterColors);
+
+      function spawnNewTsums() {
+        for (let col = 0; col < numCols; col++) {
+          let emptySpaces = 0;
+          for (let row = numRows - 1; row >= 0; row--) {
+            if (tsumGrid[row][col] === null) {
+              emptySpaces++;
+              const tsumType =
+                tsumTypes[Math.floor(Math.random() * tsumTypes.length)];
+              const tsumElement = createTsumElement(tsumType, row, col);
+              tsumGrid[row][col] = tsumElement;
+              const circle = Bodies.circle(
+                col * 50 + 25,
+                -emptySpaces * 50 + 25,
+                25,
+                {
+                  restitution: 0.5,
+                  friction: 0.8,
+                  render: {
+                    sprite: {
+                      texture: createTsumTexture(tsumElement),
+                      xScale: 0.98,
+                      yScale: 0.98,
+                    },
+                  },
+                }
+              );
+              tsumElement.circle = circle;
+              World.add(engine.world, circle);
+            }
+          }
+        }
+      }
+
+      function createBoundary(x, y, width, height) {
+        return Bodies.rectangle(x, y, width, height, {
+          isStatic: true,
+          render: {
+            visible: false,
+          },
+        });
+      }
+
+      const selectedTsums = [];
+      let isDrawing = false;
+
+      let tsumGrid = [];
+
+      function createTsumElement(tsumType, row, col) {
+        const tsumElement = document.createElement("div");
+        tsumElement.classList.add("tsum");
+        tsumElement.textContent = tsumType;
+        tsumElement.dataset.type = tsumType;
+        tsumElement.dataset.row = row;
+        tsumElement.dataset.col = col;
+
+        // Set the color based on the letter
+        tsumElement.style.color = letterColors[tsumType];
+
+        return tsumElement;
+      }
+
+      function createTsumTexture(tsumElement) {
+        return letterColors[tsumElement.dataset.type].imageUrl;
+      }
+
+      function generateColor() {
+        const colors = ["#FF0000", "#00FF00", "#0000FF", "#FFFF00"];
+        return colors[Math.floor(Math.random() * colors.length)];
+      }
+
+      function setTsumColor(tsumElement, color) {
+        tsumElement.style.color = color;
+        tsumElement.circle.render.sprite.texture =
+          createTsumTexture(tsumElement);
+      }
+
+      function selectTsum(tsumElement) {
+        const lastTsum = selectedTsums[selectedTsums.length - 1];
+
+        if (
+          !lastTsum ||
+          (lastTsum !== tsumElement &&
+            lastTsum.innerText === tsumElement.innerText)
+        ) {
+          const circle1 = tsumElement.circle;
+          const circle2 = lastTsum ? lastTsum.circle : null;
+
+          if (!lastTsum || areCirclesAdjacent(circle1, circle2)) {
+            selectedTsums.push(tsumElement);
+          }
+        }
+      }
+
+      function areCirclesAdjacent(circle1, circle2) {
+        const distance = Math.sqrt(
+          Math.pow(circle1.position.x - circle2.position.x, 2) +
+            Math.pow(circle1.position.y - circle2.position.y, 2)
+        );
+        const radiusSum = circle1.circleRadius + circle2.circleRadius;
+        const tolerance = 20; // Adjust this value to account for gaps between tsums
+
+        return distance <= radiusSum + tolerance;
+      }
+
+      function clearSelectedTsums() {
+        if (selectedTsums.length >= 3) {
+          const score = calculateScore();
+          totalScore += score;
+          updateScoreDisplay(totalScore);
+
+          selectedTsums.forEach((tsum) => {
+            const row = parseInt(tsum.dataset.row);
+            const col = parseInt(tsum.dataset.col);
+            World.remove(engine.world, tsum.circle);
+            tsumGrid[row][col] = null;
+          });
+          spawnNewTsums();
+        } else {
+          selectedTsums.forEach((tsum) => {
+            setTsumColor(tsum, letterColors[tsum.dataset.type].color);
+          });
+        }
+        selectedTsums.length = 0;
+      }
+
+      function createBoard() {
+        tsumGrid = new Array(numRows)
+          .fill(null)
+          .map(() => new Array(numCols).fill(null));
+
+        for (let row = 0; row < numRows; row++) {
+          for (let col = 0; col < numCols; col++) {
+            const tsumType =
+              tsumTypes[Math.floor(Math.random() * tsumTypes.length)];
+            const tsumElement = createTsumElement(tsumType, row, col);
+            tsumGrid[row][col] = tsumElement;
+            const circle = Bodies.circle(col * 50 + 25, row * 50 + 25, 25, {
+              restitution: 0.5,
+              friction: 0.8,
+              render: {
+                sprite: {
+                  texture: createTsumTexture(tsumElement),
+                  xScale: 0.98,
+                  yScale: 0.98,
+                },
+              },
+            });
+            tsumElement.circle = circle;
+            World.add(engine.world, circle);
+          }
+        }
+
+        const ground = createBoundary(
+          (numCols * 55) / 2,
+          numRows * 55 + 25,
+          numCols * 55,
+          50
+        );
+        const leftWall = createBoundary(
+          -25,
+          (numRows * 55) / 2,
+          50,
+          numRows * 55
+        );
+        const rightWall = createBoundary(
+          numCols * 55 + 25,
+          (numRows * 55) / 2,
+          50,
+          numRows * 55
+        );
+
+        World.add(engine.world, [ground, leftWall, rightWall]);
+
+        Engine.run(engine);
+
+        const render = Render.create({
+          element: gameBoard,
+          engine: engine,
+          options: {
+            width: numCols * 55,
+            height: numRows * 55,
+            wireframes: false,
+            background: "transparent",
+          },
+        });
+        Render.run(render);
+
+        const overlayCanvas = document.getElementById("overlay-canvas");
+        overlayCanvas.width = numCols * 55;
+        overlayCanvas.height = numRows * 55;
+        const overlayContext = overlayCanvas.getContext("2d");
+        overlayContext.clearRect(
+          0,
+          0,
+          overlayCanvas.width,
+          overlayCanvas.height
+        );
+      }
+
+      function getTsumElementByCircle(circle) {
+        for (let row = 0; row < numRows; row++) {
+          for (let col = 0; col < numCols; col++) {
+            const tsumElement = tsumGrid[row][col];
+            if (tsumElement && tsumElement.circle === circle) {
+              return tsumElement;
+            }
+          }
+        }
+        return null;
+      }
+
+      function calculateScore() {
+        const score = selectedTsums.length * 10;
+        return score;
+      }
+
+      createBoard();
+
+      function handleStart(e) {
+        e.preventDefault();
+        isDrawing = true;
+      }
+
+      function handleEnd(e) {
+        isDrawing = false;
+        clearSelectedTsums();
+      }
+
+      function handleMove(e) {
+        if (!isDrawing) return;
+
+        let mouseX, mouseY;
+        if (e.type === "mousemove") {
+          mouseX = e.clientX - gameBoard.getBoundingClientRect().left;
+          mouseY = e.clientY - gameBoard.getBoundingClientRect().top;
+        } else {
+          mouseX =
+            e.touches[0].clientX - gameBoard.getBoundingClientRect().left;
+          mouseY = e.touches[0].clientY - gameBoard.getBoundingClientRect().top;
+        }
+
+        const bodiesUnderMouse = Matter.Query.point(
+          Composite.allBodies(engine.world),
+          {
+            x: mouseX,
+            y: mouseY,
+          }
+        );
+
+        if (bodiesUnderMouse.length > 0) {
+          const tsumBody = bodiesUnderMouse[0];
+          const tsumElement = getTsumElementByCircle(tsumBody);
+
+          if (tsumElement) {
+            selectTsum(tsumElement);
+          }
+        }
+      }
+
+      gameBoard.addEventListener("mousedown", handleStart);
+      gameBoard.addEventListener("mouseup", handleEnd);
+      gameBoard.addEventListener("mousemove", handleMove);
+      gameBoard.addEventListener("touchstart", handleStart);
+      gameBoard.addEventListener("touchend", handleEnd);
+      gameBoard.addEventListener("touchmove", handleMove);
+
+      (function renderLoop() {
+        const overlayCanvas = document.getElementById("overlay-canvas");
+        const overlayContext = overlayCanvas.getContext("2d");
+        overlayContext.clearRect(
+          0,
+          0,
+          overlayCanvas.width,
+          overlayCanvas.height
+        );
+
+        for (let i = 0; i < selectedTsums.length - 1; i++) {
+          if (selectedTsums[i] && selectedTsums[i + 1]) {
+            drawLineBetweenTsums(
+              overlayContext,
+              selectedTsums[i],
+              selectedTsums[i + 1]
+            );
+          }
+        }
+
+        window.requestAnimationFrame(renderLoop);
+      })();
+    </script>
+  </body>
+</html>
