@@ -68,18 +68,23 @@
     <div id="game-container">
       <div class="score" id="score-display">Score: 0</div>
 
-      <div id="game-board" onclick="start()">
+      <div id="game-board">
         <canvas id="overlay-canvas"></canvas>
       </div>
     </div>
+    <button id="start-game">Start Game</button>
+
     <script>
       const selectTsumSound = new Audio("text.m4a");
       const clearTsumsSound = new Audio("fly-spit.m4a");
 
-      function start() {
-        clearTsumsSound.currentTime = 0;
-        clearTsumsSound.play();
+      function startGame() {
+        backgroundMusic.loop = true;
+        backgroundMusic.play();
       }
+
+      const startGameButton = document.getElementById("start-game");
+      startGameButton.addEventListener("click", startGame);
 
       const gameBoard = document.getElementById("game-board");
       const numRows = 4;
