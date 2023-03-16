@@ -33,7 +33,11 @@
       badItemImg.src = "gordo.png"; // Replace with your desired bad item image
 
       let stacker = { x: canvas.width / 2, y: canvas.height - 50 };
-      let ingredients = [];
+      let ingredients = {
+        falling: [],
+        stacked: [],
+      };
+
       let badItems = [];
       let score = 0;
 
@@ -42,7 +46,11 @@
       }
 
       function drawIngredients() {
-        ingredients.forEach((ingredient) => {
+        ingredients.falling.forEach((ingredient) => {
+          ctx.drawImage(ingredientImg, ingredient.x, ingredient.y);
+        });
+
+        ingredients.stacked.forEach((ingredient) => {
           ctx.drawImage(ingredientImg, ingredient.x, ingredient.y);
         });
       }
@@ -64,7 +72,7 @@
 
       function spawnIngredient() {
         const x = Math.random() * (canvas.width - ingredientImg.width);
-        ingredients.push({ x, y: -ingredientImg.height, isFalling: true });
+        ingredients.falling.push({ x, y: -ingredientImg.height });
       }
 
       function spawnBadItem() {
@@ -73,13 +81,13 @@
       }
 
       function moveIngredients() {
-        ingredients.forEach((ingredient, index) => {
-          if (!ingredient.isFalling) {
-            ingredient.x = stacker.x;
-            ingredient.y = stacker.y - ingredientImg.height * (index + 1);
-          } else {
-            ingredient.y += 2;
-          }
+        ingredients.falling.forEach((ingredient) => {
+          ingredient.y += 4;
+        });
+
+        ingredients.stacked.forEach((ingredient, index) => {
+          ingredient.x = stacker.x;
+          ingredient.y = stacker.y - ingredientImg.height * (index + 1);
         });
       }
 
@@ -90,19 +98,19 @@
       }
 
       function checkCollisions() {
-        ingredients.forEach((ingredient, index) => {
+        ingredients.falling.forEach((ingredient, index) => {
           if (
             ingredient.y + ingredientImg.height >=
               stacker.y - ingredientImg.height * score &&
             ingredient.x + ingredientImg.width >= stacker.x &&
-            ingredient.x <= stacker.x + stackerImg.width &&
-            ingredient.isFalling
+            ingredient.x <= stacker.x + stackerImg.width
           ) {
-            ingredient.isFalling = false;
-            ingredient.y = stacker.y - ingredientImg.height * (score + 1);
-            ingredient.x = stacker.x;
+            ingredients.falling.splice(index, 1);
+            ingredients.stacked.push({
+              x: stacker.x,
+              y: stacker.y - ingredientImg.height * (score + 1),
+            });
             score++;
-            return;
           }
         });
 
@@ -124,7 +132,7 @@
       }
 
       function removeOffscreenItems() {
-        ingredients = ingredients.filter(
+        ingredients.falling = ingredients.falling.filter(
           (ingredient) => ingredient.y < canvas.height
         );
         badItems = badItems.filter((badItem) => badItem.y < canvas.height);
