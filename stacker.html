@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Basic Sandwich Stacker</title>
+    <style>
+      canvas {
+        display: block;
+        margin: 0 auto;
+        background-color: #f0f0f0;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="gameCanvas" width="480" height="480"></canvas>
+    <script>
+      const canvas = document.getElementById("gameCanvas");
+      const ctx = canvas.getContext("2d");
+
+      const stackerImg = new Image();
+      stackerImg.src = "kirby.png"; // Replace with your desired character image
+
+      const ingredientImg = new Image();
+      ingredientImg.src = "bread.png"; // Replace with your desired ingredient image
+
+      const badItemImg = new Image();
+      badItemImg.src = "gordo.png"; // Replace with your desired bad item image
+
+      let stacker = { x: canvas.width / 2, y: canvas.height - 50 };
+      let ingredients = [];
+      let badItems = [];
+      let score = 0;
+
+      function drawStacker() {
+        ctx.drawImage(stackerImg, stacker.x, stacker.y);
+      }
+
+      function drawIngredients() {
+        ingredients.forEach((ingredient) => {
+          ctx.drawImage(ingredientImg, ingredient.x, ingredient.y);
+        });
+      }
+
+      function drawBadItems() {
+        badItems.forEach((badItem) => {
+          ctx.drawImage(badItemImg, badItem.x, badItem.y);
+        });
+      }
+
+      let ickScore = 0;
+
+      function drawScore() {
+        ctx.font = "16px Arial";
+        ctx.fillStyle = "black";
+        ctx.fillText("Score: " + score, 8, 20);
+        ctx.fillText("Icks: " + ickScore, 8, 40);
+      }
+
+      function spawnIngredient() {
+        const x = Math.random() * (canvas.width - ingredientImg.width);
+        ingredients.push({ x, y: -ingredientImg.height, isFalling: true });
+      }
+
+      function spawnBadItem() {
+        const x = Math.random() * (canvas.width - badItemImg.width);
+        badItems.push({ x, y: -badItemImg.height });
+      }
+
+      function moveIngredients() {
+        ingredients.forEach((ingredient, index) => {
+          if (!ingredient.isFalling) {
+            ingredient.x = stacker.x;
+            ingredient.y = stacker.y - ingredientImg.height * (index + 1);
+          } else {
+            ingredient.y += 4;
+          }
+        });
+      }
+
+      function moveBadItems() {
+        badItems.forEach((badItem) => {
+          badItem.y += 2;
+        });
+      }
+
+      function checkCollisions() {
+        ingredients.forEach((ingredient, index) => {
+          if (
+            ingredient.y + ingredientImg.height >=
+              stacker.y - ingredientImg.height * score &&
+            ingredient.x + ingredientImg.width >= stacker.x &&
+            ingredient.x <= stacker.x + stackerImg.width &&
+            ingredient.isFalling
+          ) {
+            ingredient.isFalling = false;
+            ingredient.y = stacker.y - ingredientImg.height * (score + 1);
+            ingredient.x = stacker.x;
+            score++;
+          }
+        });
+
+        badItems.forEach((badItem, index) => {
+          if (
+            badItem.y + badItemImg.height >= stacker.y &&
+            badItem.x + badItemImg.width >= stacker.x &&
+            badItem.x <= stacker.x + stackerImg.width
+          ) {
+            badItems.splice(index, 1);
+            ickScore++;
+
+            if (ickScore >= 3) {
+              alert("Game over! Your score is: " + score);
+              location.reload(); // Restart the game
+            }
+          }
+        });
+      }
+
+      function removeOffscreenItems() {
+        ingredients = ingredients.filter(
+          (ingredient) => ingredient.y < canvas.height
+        );
+        badItems = badItems.filter((badItem) => badItem.y < canvas.height);
+      }
+
+      function gameLoop() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        if (Math.random() < 0.02) spawnIngredient();
+        if (Math.random() < 0.01) spawnBadItem();
+
+        moveIngredients();
+        moveBadItems();
+        checkCollisions();
+        removeOffscreenItems();
+
+        drawIngredients();
+        drawBadItems();
+        drawStacker();
+        drawScore();
+
+        requestAnimationFrame(gameLoop);
+      }
+
+      canvas.addEventListener("mousemove", (e) => {
+        stacker.x =
+          e.clientX -
+          canvas.getBoundingClientRect().left -
+          stackerImg.width / 2;
+      });
+
+      gameLoop();
+    </script>
+  </body>
+</html>
