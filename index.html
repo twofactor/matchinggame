@@ -14,9 +14,17 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.14.2/matter.min.js"></script>
     <style>
       body {
+        background-color: #0000c8;
+      }
+
+      #game-container {
         background-image: url("background.png");
         background-repeat: no-repeat;
         background-size: 512px 448px;
+        margin: auto;
+        overflow: hidden;
+        width: 512px;
+        height: 448px;
       }
 
       #game-board {
@@ -25,8 +33,8 @@
         grid-template-rows: repeat(6, 50px);
         grid-gap: 5px;
         position: relative;
-        margin-top: 45px;
-        margin-left: 55px;
+        margin-top: 60px;
+        margin-left: 62px;
       }
       .tsum {
         width: 50px;
@@ -57,10 +65,16 @@
     </style>
   </head>
   <body>
-    <div class="score" id="score-display">Score: 0</div>
+    <div id="game-container">
+      <div class="score" id="score-display">Score: 0</div>
 
-    <div id="game-board"><canvas id="overlay-canvas"></canvas></div>
+      <div id="game-board"><canvas id="overlay-canvas"></canvas></div>
+    </div>
     <script>
+      const selectTsumSound = new Audio("text.wav");
+      const clearTsumsSound = new Audio("fly-spit.wav");
+      const backgroundMusic = new Audio("greengreens.mp3");
+
       const gameBoard = document.getElementById("game-board");
       const numRows = 4;
       const numCols = 7;
@@ -218,6 +232,8 @@
           const circle2 = lastTsum ? lastTsum.circle : null;
 
           if (!lastTsum || areCirclesAdjacent(circle1, circle2)) {
+            selectTsumSound.currentTime = 0;
+            selectTsumSound.play();
             selectedTsums.push(tsumElement);
           }
         }
@@ -239,6 +255,9 @@
           const score = calculateScore();
           totalScore += score;
           updateScoreDisplay(totalScore);
+
+          clearTsumsSound.currentTime = 0;
+          clearTsumsSound.play();
 
           selectedTsums.forEach((tsum) => {
             const row = parseInt(tsum.dataset.row);
@@ -418,6 +437,9 @@
 
         window.requestAnimationFrame(renderLoop);
       })();
+
+      backgroundMusic.loop = true;
+      backgroundMusic.play();
     </script>
   </body>
 </html>
