@@ -68,11 +68,18 @@
     <div id="game-container">
       <div class="score" id="score-display">Score: 0</div>
 
-      <div id="game-board"><canvas id="overlay-canvas"></canvas></div>
+      <div id="game-board" onclick="start()">
+        <canvas id="overlay-canvas"></canvas>
+      </div>
     </div>
     <script>
       const selectTsumSound = new Audio("text.m4a");
       const clearTsumsSound = new Audio("fly-spit.m4a");
+
+      function start() {
+        clearTsumsSound.currentTime = 0;
+        clearTsumsSound.play();
+      }
 
       const gameBoard = document.getElementById("game-board");
       const numRows = 4;
