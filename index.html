@@ -71,9 +71,8 @@
       <div id="game-board"><canvas id="overlay-canvas"></canvas></div>
     </div>
     <script>
-      const selectTsumSound = new Audio("text.wav");
-      const clearTsumsSound = new Audio("fly-spit.wav");
-      const backgroundMusic = new Audio("greengreens.mp3");
+      const selectTsumSound = new Audio("text.m4a");
+      const clearTsumsSound = new Audio("fly-spit.m4a");
 
       const gameBoard = document.getElementById("game-board");
       const numRows = 4;
@@ -437,9 +436,6 @@
 
         window.requestAnimationFrame(renderLoop);
       })();
-
-      backgroundMusic.loop = true;
-      backgroundMusic.play();
     </script>
   </body>
 </html>
