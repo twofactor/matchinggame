@@ -5,8 +5,10 @@
     <meta name="viewport" content="width=480, user-scalable=no" />
     <title>Basic Sandwich Stacker</title>
     <style>
+      html,
       body {
-        overflow: hidden;
+        max-width: 100%;
+        overflow-x: hidden;
       }
       canvas {
         display: block;
@@ -100,6 +102,7 @@
             ingredient.y = stacker.y - ingredientImg.height * (score + 1);
             ingredient.x = stacker.x;
             score++;
+            return;
           }
         });
 
