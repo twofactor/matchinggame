@@ -76,6 +76,9 @@
     </div>
 
     <script>
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      const audioCtx = new AudioContext();
+
       const selectTsumSound = new Audio("text.m4a");
       const clearTsumsSound = new Audio("fly-spit.m4a");
 
