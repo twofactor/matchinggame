@@ -79,6 +79,17 @@
       const AudioContext = window.AudioContext || window.webkitAudioContext;
       const audioCtx = new AudioContext();
 
+      function unlockAudioContext() {
+        if (audioCtx.state === "suspended") {
+          const buffer = audioCtx.createBuffer(1, 1, 22050);
+          const source = audioCtx.createBufferSource();
+          source.buffer = buffer;
+          source.connect(audioCtx.destination);
+          source.start(0);
+          audioCtx.resume();
+        }
+      }
+
       const selectTsumSound = new Audio("text.m4a");
       const clearTsumsSound = new Audio("fly-spit.m4a");
 
@@ -377,6 +388,7 @@
       function handleStart(e) {
         e.preventDefault();
         isDrawing = true;
+        unlockAudioContext();
       }
 
       function handleEnd(e) {
