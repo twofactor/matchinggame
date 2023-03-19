@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=512, user-scalable=no" />
+    <title>Kirby Tsum Tsum Game</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=VT323&display=swap"
+      rel="stylesheet"
+    />
+
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/phaser/3.55.2/phaser.min.js"></script>
+    <style>
+      body {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        margin: 0;
+        background-color: #0000c8;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="game-container"></div>
+
+    <script>
+      class KirbyTsumTsum extends Phaser.Scene {
+        constructor() {
+          super("KirbyTsumTsum");
+        }
+
+        preload() {
+          for (const tsumType in letterColors) {
+            this.load.image(tsumType, letterColors[tsumType].imageUrl);
+          }
+        }
+
+        create() {
+          createBoard();
+
+          for (let row = 0; row < numRows; row++) {
+            for (let col = 0; col < numCols; col++) {
+              const tsumElement = tsumGrid[row][col];
+              const tsumSprite = this.add.image(
+                col * 55 + 27.5,
+                row * 55 + 27.5,
+                tsumElement.type
+              );
+              tsumSprite.setScale(0.98);
+              tsumSprite.setInteractive();
+              tsumSprite.on("pointerdown", () => {
+                isDrawing = true;
+                selectedTsums.push(tsumElement);
+              });
+              tsumSprite.on("pointerover", () => {
+                if (isDrawing) {
+                  const lastTsum = selectedTsums[selectedTsums.length - 1];
+
+                  if (
+                    !lastTsum ||
+                    (lastTsum !== tsumElement &&
+                      lastTsum.type === tsumElement.type &&
+                      !selectedTsums.includes(tsumElement) &&
+                      areTsumsAdjacent(lastTsum, tsumElement))
+                  ) {
+                    selectedTsums.push(tsumElement);
+                  } else if (
+                    selectedTsums.length >= 2 &&
+                    selectedTsums[selectedTsums.length - 2] === tsumElement
+                  ) {
+                    selectedTsums.pop();
+                  }
+                }
+              });
+            }
+          }
+
+          this.input.on("pointerup", () => {
+            isDrawing = false;
+            clearSelectedTsums();
+          });
+        }
+
+        update() {
+          // No need to update anything in this game
+        }
+      }
+
+      const config = {
+        type: Phaser.AUTO,
+        width: numCols * 55,
+        height: numRows * 55 + 50,
+        parent: "game-container",
+        backgroundColor: "#0000c8",
+        scene: [KirbyTsumTsum],
+      };
+
+      const game = new Phaser.Game(config);
+    </script>
+  </body>
+</html>

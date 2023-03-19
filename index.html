@@ -76,9 +76,33 @@
     </div>
 
     <script>
+      // Constants and variables
       const AudioContext = window.AudioContext || window.webkitAudioContext;
       const audioCtx = new AudioContext();
+      const selectTsumSound = new Audio("text.m4a");
+      const clearTsumsSound = new Audio("fly-spit.m4a");
+      const gameBoard = document.getElementById("game-board");
+      const numRows = 4;
+      const numCols = 7;
+      let totalScore = 0;
 
+      // Matter.js setup
+      const Engine = Matter.Engine;
+      const Render = Matter.Render;
+      const World = Matter.World;
+      const Bodies = Matter.Bodies;
+      const Body = Matter.Body;
+      const Composite = Matter.Composite;
+      const engine = Engine.create();
+      const Events = Matter.Events;
+
+      // Game state
+      const selectedTsums = [];
+      let isDrawing = false;
+
+      let tsumGrid = [];
+
+      // Functions related to audio context
       function unlockAudioContext() {
         if (audioCtx.state === "suspended") {
           const buffer = audioCtx.createBuffer(1, 1, 22050);
@@ -90,29 +114,13 @@
         }
       }
 
-      const selectTsumSound = new Audio("text.m4a");
-      const clearTsumsSound = new Audio("fly-spit.m4a");
-
-      const gameBoard = document.getElementById("game-board");
-      const numRows = 4;
-      const numCols = 7;
-
-      let totalScore = 0;
-
-      const Engine = Matter.Engine;
-      const Render = Matter.Render;
-      const World = Matter.World;
-      const Bodies = Matter.Bodies;
-      const Body = Matter.Body;
-      const Composite = Matter.Composite;
-      const engine = Engine.create();
-      const Events = Matter.Events;
-
+      // Functions related to score display
       function updateScoreDisplay(score) {
         const scoreDisplay = document.getElementById("score-display");
         scoreDisplay.textContent = "Score: " + score;
       }
 
+      // Functions related to drawing lines between tsums
       function drawLineBetweenTsums(context, tsum1, tsum2) {
         context.beginPath();
         context.moveTo(tsum1.circle.position.x, tsum1.circle.position.y);
@@ -141,6 +149,7 @@
         }
       });
 
+      // Functions related to Tsum elements
       const letterColors = {
         A: {
           color: "red",
@@ -162,6 +171,7 @@
 
       const tsumTypes = Object.keys(letterColors);
 
+      // Functions related to game board creation and setup
       function spawnNewTsums() {
         for (let col = 0; col < numCols; col++) {
           let emptySpaces = 0;
@@ -193,103 +203,6 @@
             }
           }
         }
-      }
-
-      function createBoundary(x, y, width, height) {
-        return Bodies.rectangle(x, y, width, height, {
-          isStatic: true,
-          render: {
-            visible: false,
-          },
-        });
-      }
-
-      const selectedTsums = [];
-      let isDrawing = false;
-
-      let tsumGrid = [];
-
-      function createTsumElement(tsumType, row, col) {
-        const tsumElement = document.createElement("div");
-        tsumElement.classList.add("tsum");
-        tsumElement.textContent = tsumType;
-        tsumElement.dataset.type = tsumType;
-        tsumElement.dataset.row = row;
-        tsumElement.dataset.col = col;
-
-        // Set the color based on the letter
-        tsumElement.style.color = letterColors[tsumType];
-
-        return tsumElement;
-      }
-
-      function createTsumTexture(tsumElement) {
-        return letterColors[tsumElement.dataset.type].imageUrl;
-      }
-
-      function generateColor() {
-        const colors = ["#FF0000", "#00FF00", "#0000FF", "#FFFF00"];
-        return colors[Math.floor(Math.random() * colors.length)];
-      }
-
-      function setTsumColor(tsumElement, color) {
-        tsumElement.style.color = color;
-        tsumElement.circle.render.sprite.texture =
-          createTsumTexture(tsumElement);
-      }
-
-      function selectTsum(tsumElement) {
-        const lastTsum = selectedTsums[selectedTsums.length - 1];
-
-        if (
-          !lastTsum ||
-          (lastTsum !== tsumElement &&
-            lastTsum.innerText === tsumElement.innerText)
-        ) {
-          const circle1 = tsumElement.circle;
-          const circle2 = lastTsum ? lastTsum.circle : null;
-
-          if (!lastTsum || areCirclesAdjacent(circle1, circle2)) {
-            selectTsumSound.currentTime = 0;
-            selectTsumSound.play();
-            selectedTsums.push(tsumElement);
-          }
-        }
-      }
-
-      function areCirclesAdjacent(circle1, circle2) {
-        const distance = Math.sqrt(
-          Math.pow(circle1.position.x - circle2.position.x, 2) +
-            Math.pow(circle1.position.y - circle2.position.y, 2)
-        );
-        const radiusSum = circle1.circleRadius + circle2.circleRadius;
-        const tolerance = 20; // Adjust this value to account for gaps between tsums
-
-        return distance <= radiusSum + tolerance;
-      }
-
-      function clearSelectedTsums() {
-        if (selectedTsums.length >= 3) {
-          const score = calculateScore();
-          totalScore += score;
-          updateScoreDisplay(totalScore);
-
-          clearTsumsSound.currentTime = 0;
-          clearTsumsSound.play();
-
-          selectedTsums.forEach((tsum) => {
-            const row = parseInt(tsum.dataset.row);
-            const col = parseInt(tsum.dataset.col);
-            World.remove(engine.world, tsum.circle);
-            tsumGrid[row][col] = null;
-          });
-          spawnNewTsums();
-        } else {
-          selectedTsums.forEach((tsum) => {
-            setTsumColor(tsum, letterColors[tsum.dataset.type].color);
-          });
-        }
-        selectedTsums.length = 0;
       }
 
       function createBoard() {
@@ -366,6 +279,106 @@
         );
       }
 
+      function createBoundary(x, y, width, height) {
+        return Bodies.rectangle(x, y, width, height, {
+          isStatic: true,
+          render: {
+            visible: false,
+          },
+        });
+      }
+
+      function createTsumElement(tsumType, row, col) {
+        const tsumElement = document.createElement("div");
+        tsumElement.classList.add("tsum");
+        tsumElement.textContent = tsumType;
+        tsumElement.dataset.type = tsumType;
+        tsumElement.dataset.row = row;
+        tsumElement.dataset.col = col;
+
+        // Set the color based on the letter
+        tsumElement.style.color = letterColors[tsumType];
+
+        return tsumElement;
+      }
+
+      function createTsumTexture(tsumElement) {
+        return letterColors[tsumElement.dataset.type].imageUrl;
+      }
+
+      function generateColor() {
+        const colors = ["#FF0000", "#00FF00", "#0000FF", "#FFFF00"];
+        return colors[Math.floor(Math.random() * colors.length)];
+      }
+
+      function setTsumColor(tsumElement, color) {
+        tsumElement.style.color = color;
+        tsumElement.circle.render.sprite.texture =
+          createTsumTexture(tsumElement);
+      }
+
+      function selectTsum(tsumElement) {
+        const lastTsum = selectedTsums[selectedTsums.length - 1];
+
+        if (
+          !lastTsum ||
+          (lastTsum !== tsumElement &&
+            lastTsum.innerText === tsumElement.innerText &&
+            !selectedTsums.includes(tsumElement))
+        ) {
+          const circle1 = tsumElement.circle;
+          const circle2 = lastTsum ? lastTsum.circle : null;
+
+          if (!lastTsum || areCirclesAdjacent(circle1, circle2)) {
+            selectTsumSound.currentTime = 0;
+            selectTsumSound.play();
+            selectedTsums.push(tsumElement);
+          }
+        } else if (
+          selectedTsums.length >= 2 &&
+          selectedTsums[selectedTsums.length - 2] === tsumElement
+        ) {
+          selectTsumSound.currentTime = 0;
+          selectTsumSound.play();
+          selectedTsums.pop();
+        }
+      }
+
+      function areCirclesAdjacent(circle1, circle2) {
+        const distance = Math.sqrt(
+          Math.pow(circle1.position.x - circle2.position.x, 2) +
+            Math.pow(circle1.position.y - circle2.position.y, 2)
+        );
+        const radiusSum = circle1.circleRadius + circle2.circleRadius;
+        const tolerance = 20; // Adjust this value to account for gaps between tsums
+
+        return distance <= radiusSum + tolerance;
+      }
+
+      function clearSelectedTsums() {
+        if (selectedTsums.length >= 3) {
+          const score = calculateScore();
+          totalScore += score;
+          updateScoreDisplay(totalScore);
+
+          clearTsumsSound.currentTime = 0;
+          clearTsumsSound.play();
+
+          selectedTsums.forEach((tsum) => {
+            const row = parseInt(tsum.dataset.row);
+            const col = parseInt(tsum.dataset.col);
+            World.remove(engine.world, tsum.circle);
+            tsumGrid[row][col] = null;
+          });
+          spawnNewTsums();
+        } else {
+          selectedTsums.forEach((tsum) => {
+            setTsumColor(tsum, letterColors[tsum.dataset.type].color);
+          });
+        }
+        selectedTsums.length = 0;
+      }
+
       function getTsumElementByCircle(circle) {
         for (let row = 0; row < numRows; row++) {
           for (let col = 0; col < numCols; col++) {
@@ -379,12 +392,21 @@
       }
 
       function calculateScore() {
-        const score = selectedTsums.length * 10;
-        return score;
+        const chainLength = selectedTsums.length;
+
+        if (chainLength < 3) {
+          return 0;
+        }
+
+        const baseScore = 10 * chainLength;
+        let bonus = 0;
+
+        if (chainLength > 3) {
+          bonus = 10 * (chainLength - 3) * (chainLength - 2);
+        }
+
+        return baseScore + bonus;
       }
-
-      createBoard();
-
       function handleStart(e) {
         e.preventDefault();
         isDrawing = true;
@@ -427,6 +449,9 @@
         }
       }
 
+      // Game initialization and event listeners
+
+      createBoard();
       gameBoard.addEventListener("mousedown", handleStart);
       gameBoard.addEventListener("mouseup", handleEnd);
       gameBoard.addEventListener("mousemove", handleMove);
