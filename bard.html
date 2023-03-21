@@ -1,0 +1,124 @@
+<html>
+  <head>
+    <title>Kirby Eats Food</title>
+  </head>
+  <body>
+    <canvas id="canvas" width="300" height="300"></canvas>
+    <script>
+      // Create a new instance of the game class
+      var game = new Game();
+
+      // Start the game
+      game.start();
+
+      class Game {
+        // Constructor
+        constructor() {
+          // Create a new canvas
+          this.canvas = document.getElementById("canvas");
+          // Create a new player object
+          this.player = new Player();
+          // Start the game loop
+          this.loop = setInterval(this.update.bind(this), 20);
+        }
+
+        // Update the game
+        update() {
+          // Check if the player is colliding with food
+          if (this.player.collidesWith(this.food)) {
+            // Eat the food
+            this.food = null;
+            // Increase the player's score
+            this.player.score += 1;
+            // Play a sound
+            this.playSound("eat");
+          }
+          // Move the player
+          this.player.move();
+          // Update the canvas
+          this.canvas.draw(this.player);
+        }
+
+        // Play a sound
+        playSound(sound) {
+          // Get the sound object
+          var sound = new Sound(sound);
+          // Play the sound
+          sound.play();
+        }
+
+        // Draw the player
+        drawPlayer(x, y) {
+          // Draw a circle at the given position
+          this.canvas.fillCircle(x, y, 10);
+        }
+
+        // Draw the food
+        drawFood(x, y) {
+          // Draw a square at the given position
+          this.canvas.fillRect(x, y, 10, 10);
+        }
+      }
+
+      // The player object
+      class Player {
+        // Constructor
+        constructor() {
+          // Initialize the player's position
+          this.x = 100;
+          this.y = 100;
+          // Initialize the player's score
+          this.score = 0;
+        }
+
+        // Move the player
+        move() {
+          // Move the player up
+          this.y -= 5;
+        }
+
+        // Collides with food
+        collidesWith(food) {
+          // Check if the player is colliding with the food
+          if (
+            this.x > food.x &&
+            this.x < food.x + food.width &&
+            this.y > food.y &&
+            this.y < food.y + food.height
+          ) {
+            // Return true
+            return true;
+          } else {
+            // Return false
+            return false;
+          }
+        }
+
+        // Increase the player's score
+        increaseScore() {
+          // Increase the player's score by 1
+          this.score += 1;
+        }
+      }
+
+      // The food object
+      class Food {
+        // Constructor
+        constructor() {
+          // Initialize the food's position
+          this.x = random(0, 300);
+          this.y = random(0, 300);
+          // Initialize the food's width and height
+          this.width = 20;
+          this.height = 20;
+        }
+
+        // Draw the food
+        draw() {
+          // Draw a square at the given position
+          this.canvas.fillRect(this.x, this.y, this.width, this.height);
+        }
+      }
+    </script>
+  </body>
+</html>

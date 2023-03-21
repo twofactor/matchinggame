@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Kirby Eats Food</title>
+    <style>
+      canvas {
+        display: block;
+        margin: auto;
+        background-color: lightblue;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
+    <script>
+      const canvas = document.getElementById("gameCanvas");
+      const ctx = canvas.getContext("2d");
+
+      const kirbyImage = new Image();
+      kirbyImage.src = "./kirby.png"; // Replace with your own Kirby image
+      const foodImage = new Image();
+      foodImage.src = "./bread.png"; // Replace with your own food image
+
+      const kirby = {
+        x: canvas.width / 2,
+        y: canvas.height - 100,
+        width: 50,
+        height: 50,
+        speed: 10,
+      };
+
+      const food = {
+        x: Math.floor(Math.random() * (canvas.width - 50)),
+        y: 0,
+        width: 30,
+        height: 30,
+        speed: 1,
+      };
+
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "ArrowLeft" && kirby.x > 0) {
+          kirby.x -= kirby.speed;
+        } else if (
+          e.key === "ArrowRight" &&
+          kirby.x < canvas.width - kirby.width
+        ) {
+          kirby.x += kirby.speed;
+        }
+      });
+
+      function drawImage(obj, image) {
+        ctx.drawImage(image, obj.x, obj.y, obj.width, obj.height);
+      }
+
+      function checkCollision(a, b) {
+        return (
+          a.x < b.x + b.width &&
+          a.x + a.width > b.x &&
+          a.y < b.y + b.height &&
+          a.y + a.height > b.y
+        );
+      }
+
+      function resetFood() {
+        food.x = Math.floor(Math.random() * (canvas.width - food.width));
+        food.y = 0;
+      }
+
+      function gameLoop() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        food.y += food.speed;
+        if (food.y > canvas.height) {
+          resetFood();
+        }
+
+        if (checkCollision(kirby, food)) {
+          resetFood();
+        }
+
+        drawImage(kirby, kirbyImage);
+        drawImage(food, foodImage);
+
+        requestAnimationFrame(gameLoop);
+      }
+
+      gameLoop();
+    </script>
+  </body>
+</html>

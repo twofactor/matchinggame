@@ -2,105 +2,119 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=512, user-scalable=no" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Kirby Tsum Tsum Game</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=VT323&display=swap"
-      rel="stylesheet"
-    />
-
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/phaser/3.55.2/phaser.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.24.1/dist/phaser.min.js"></script>
     <style>
       body {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        height: 100vh;
         margin: 0;
-        background-color: #0000c8;
       }
     </style>
   </head>
   <body>
-    <div id="game-container"></div>
-
     <script>
-      class KirbyTsumTsum extends Phaser.Scene {
-        constructor() {
-          super("KirbyTsumTsum");
-        }
-
-        preload() {
-          for (const tsumType in letterColors) {
-            this.load.image(tsumType, letterColors[tsumType].imageUrl);
-          }
-        }
-
-        create() {
-          createBoard();
-
-          for (let row = 0; row < numRows; row++) {
-            for (let col = 0; col < numCols; col++) {
-              const tsumElement = tsumGrid[row][col];
-              const tsumSprite = this.add.image(
-                col * 55 + 27.5,
-                row * 55 + 27.5,
-                tsumElement.type
-              );
-              tsumSprite.setScale(0.98);
-              tsumSprite.setInteractive();
-              tsumSprite.on("pointerdown", () => {
-                isDrawing = true;
-                selectedTsums.push(tsumElement);
-              });
-              tsumSprite.on("pointerover", () => {
-                if (isDrawing) {
-                  const lastTsum = selectedTsums[selectedTsums.length - 1];
-
-                  if (
-                    !lastTsum ||
-                    (lastTsum !== tsumElement &&
-                      lastTsum.type === tsumElement.type &&
-                      !selectedTsums.includes(tsumElement) &&
-                      areTsumsAdjacent(lastTsum, tsumElement))
-                  ) {
-                    selectedTsums.push(tsumElement);
-                  } else if (
-                    selectedTsums.length >= 2 &&
-                    selectedTsums[selectedTsums.length - 2] === tsumElement
-                  ) {
-                    selectedTsums.pop();
-                  }
-                }
-              });
-            }
-          }
-
-          this.input.on("pointerup", () => {
-            isDrawing = false;
-            clearSelectedTsums();
-          });
-        }
-
-        update() {
-          // No need to update anything in this game
-        }
-      }
-
       const config = {
         type: Phaser.AUTO,
-        width: numCols * 55,
-        height: numRows * 55 + 50,
-        parent: "game-container",
-        backgroundColor: "#0000c8",
-        scene: [KirbyTsumTsum],
+        width: 7 * 55,
+        height: 4 * 55,
+        backgroundColor: "transparent",
+        pixelArt: true,
+        physics: {
+          default: "matter",
+          matter: {
+            gravity: { y: 1 },
+            debug: false,
+          },
+        },
+        scene: {
+          preload: preload,
+          create: create,
+          update: update,
+        },
       };
 
       const game = new Phaser.Game(config);
+      let selectedTsums = [];
+
+      function preload() {
+        this.load.image("A", "./kirby.png");
+        this.load.image("B", "./bronto.png");
+        this.load.image("C", "./waddledoo.png");
+        this.load.image("D", "./waddledee.png");
+
+        this.load.audio("selectTsumSound", "./text.m4a");
+        this.load.audio("clearTsumsSound", "./fly-spit.m4a");
+      }
+
+      function create() {
+        this.selectTsumSound = this.sound.add("selectTsumSound");
+        this.clearTsumsSound = this.sound.add("clearTsumsSound");
+
+        const tsumTypes = ["A", "B", "C", "D"];
+        this.tsums = [];
+
+        // Create tsums and add them to the scene
+        for (let i = 0; i < config.width / 55; i++) {
+          for (let j = 0; j < config.height / 55; j++) {
+            const randomType = Phaser.Utils.Array.GetRandom(tsumTypes);
+            const tsum = this.add.sprite(
+              i * 55 + 27.5,
+              j * 55 + 27.5,
+              randomType
+            );
+            tsum.setInteractive();
+            tsum.on("pointerdown", (pointer) => {
+              //   this.selectTsumSound.play();
+              handleTsumSelection(tsum, this);
+            });
+            this.tsums.push(tsum);
+          }
+        }
+      }
+
+      function update() {
+        // Add any continuous checks or updates here
+      }
+
+      function handleTsumSelection(tsum, scene) {
+        if (
+          selectedTsums.length === 0 ||
+          selectedTsums[selectedTsums.length - 1].texture.key ===
+            tsum.texture.key
+        ) {
+          tsum.setTint(0x999999);
+          selectedTsums.push(tsum);
+        } else if (
+          selectedTsums.length >= 2 &&
+          selectedTsums[selectedTsums.length - 2] === tsum
+        ) {
+          const lastTsum = selectedTsums.pop();
+          lastTsum.clearTint();
+        } else {
+          clearSelectedTsums(scene);
+        }
+      }
+
+      function clearSelectedTsums(scene) {
+        if (selectedTsums.length >= 3) {
+          selectedTsums.forEach((tsum) => {
+            scene.tweens.add({
+              targets: tsum,
+              alpha: 0,
+              duration: 500,
+              onComplete: () => {
+                tsum.destroy();
+              },
+            });
+          });
+          //   scene.clearTsumsSound.play();
+        } else {
+          selectedTsums.forEach((tsum) => {
+            tsum.clearTint();
+          });
+        }
+        selectedTsums = [];
+      }
     </script>
   </body>
 </html>
