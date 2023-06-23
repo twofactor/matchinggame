@@ -17,8 +17,8 @@
       .character {
         position: absolute;
         bottom: 0;
-        width: 100px;
-        height: 200px;
+        width: 150px;
+        height: 300px;
         background-size: cover;
       }
 
@@ -50,7 +50,7 @@
 
       #player,
       #ai {
-        top: 300px;
+        top: 180px;
       }
     </style>
 
@@ -225,7 +225,7 @@
 
         function attack(attacker, defender, damage) {
           const distance = Math.abs(attacker.offsetLeft - defender.offsetLeft);
-          if (distance > 64) return;
+          if (distance > 100) return;
 
           if (attacker === player && isPlayerBlocking) return;
 
@@ -259,6 +259,14 @@
         function checkGameEnd() {
           if (playerHP <= 0 || aiHP <= 0) {
             gameInProgress = false;
+            if (playerHP <= 0) {
+              playerHP = 100;
+              aiHP = 0;
+            } else {
+              playerHP = 0;
+              aiHP = 100;
+            }
+
             alert(playerHP <= 0 ? "Elon Wins!" : "Zuck Wins!");
           }
         }
