@@ -260,11 +260,11 @@
           if (playerHP <= 0 || aiHP <= 0) {
             gameInProgress = false;
             if (playerHP <= 0) {
-              playerHP = 100;
-              aiHP = 0;
-            } else {
               playerHP = 0;
               aiHP = 100;
+            } else {
+              playerHP = 100;
+              aiHP = 0;
             }
 
             alert(playerHP <= 0 ? "Elon Wins!" : "Zuck Wins!");
