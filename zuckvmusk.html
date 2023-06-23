@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      #game-container {
+        position: relative;
+        width: 640px;
+        height: 480px;
+        border: 1px solid black;
+        background-image: url("zuckbackground.png");
+        background-size: cover;
+      }
+
+      .character {
+        position: absolute;
+        bottom: 0;
+        width: 100px;
+        height: 200px;
+        background-size: cover;
+      }
+
+      #player {
+        background-image: url("zuckidle.png");
+        left: 0;
+      }
+
+      #ai {
+        background-image: url("elonidle.png");
+        left: 500px;
+      }
+
+      .health-bar {
+        position: absolute;
+
+        height: 20px;
+
+        background-color: green;
+      }
+
+      #player-health {
+        top: 10px;
+      }
+
+      #ai-health {
+        top: 30px;
+      }
+
+      #player,
+      #ai {
+        top: 300px;
+      }
+    </style>
+
+    <script>
+      document.addEventListener("DOMContentLoaded", () => {
+        const keyboardState = {};
+
+        document.addEventListener("keydown", (event) => {
+          keyboardState[event.code] = true;
+        });
+
+        document.addEventListener("keyup", (event) => {
+          keyboardState[event.code] = false;
+        });
+
+        const player = document.getElementById("player");
+        const ai = document.getElementById("ai");
+        const gameContainer = document.getElementById("game-container");
+
+        const playerHealth = document.getElementById("player-health");
+        const aiHealth = document.getElementById("ai-health");
+        const playAgainButton = document.getElementById("play-again");
+
+        const containerBottom =
+          gameContainer.offsetTop + gameContainer.offsetHeight;
+
+        let canPlayerAttack = true;
+        let isPlayerBlocking = false;
+
+        let playerHP = 100;
+        let aiHP = 100;
+
+        let playerSpecialCharge = 0;
+        let aiSpecialCharge = 0;
+
+        let playerYVelocity = 0;
+        let aiYVelocity = 0;
+        const gravity = 0.5;
+        const jumpStrength = 8;
+
+        let gameInProgress = false;
+
+        const playerSprite = {
+          punch: "url(zuckpunch.png)",
+          kick: "url(zuckpunch.png)",
+          special: "url(zuckpunch.png)",
+          idle: "url(zuckidle.png)",
+        };
+
+        const aiSprite = {
+          punch: "url(elonpunch.png)",
+          kick: "url(elonpunch.png)",
+          special: "url(elonpunch.png)",
+          idle: "url(elonidle.png)",
+        };
+
+        document.addEventListener("keydown", (event) => {
+          if (!gameInProgress) return;
+
+          if (event.code === "KeyA" && canPlayerAttack) {
+            player.style.backgroundImage = playerSprite.punch;
+            attack(player, ai, 10);
+            playerSpecialCharge += 10;
+            canPlayerAttack = false;
+            setTimeout(() => {
+              canPlayerAttack = true;
+            }, 500);
+          } else if (event.code === "KeyS" && canPlayerAttack) {
+            player.style.backgroundImage = playerSprite.kick;
+            attack(player, ai, 15);
+            canPlayerAttack = false;
+            setTimeout(() => {
+              canPlayerAttack = true;
+            }, 500);
+          } else if (event.code === "KeyD") {
+            // block
+            isPlayerBlocking = true;
+            setTimeout(() => {
+              isPlayerBlocking = false;
+            }, 500);
+          } else if (event.code === "ArrowLeft") {
+            // move left
+            player.style.left = `${player.offsetLeft - 10}px`;
+          } else if (event.code === "ArrowRight") {
+            // move right
+            player.style.left = `${player.offsetLeft + 10}px`;
+          }
+          if (
+            event.code === "ArrowUp" &&
+            player.offsetTop + player.offsetHeight >= containerBottom
+          ) {
+            // Jump
+            playerYVelocity = -jumpStrength;
+          }
+        });
+
+        document.addEventListener("keyup", (event) => {
+          if (!gameInProgress) return;
+          if (
+            event.code === "KeyA" ||
+            event.code === "KeyS" ||
+            event.code === "KeyD"
+          ) {
+            player.style.backgroundImage = playerSprite.idle;
+          }
+        });
+
+        setInterval(() => {
+          if (!gameInProgress) return;
+
+          const action = Math.random();
+          ai.style.backgroundImage = aiSprite.idle;
+
+          if (action < 0.3) {
+            // AI punch
+            ai.style.backgroundImage = aiSprite.punch;
+            attack(ai, player, 10);
+            aiSpecialCharge += 10;
+          } else if (action < 0.6) {
+            // AI kick
+            ai.style.backgroundImage = aiSprite.kick;
+            attack(ai, player, 15);
+            aiSpecialCharge += 15;
+          }
+
+          if (aiSpecialCharge >= 100) {
+            ai.style.backgroundImage = aiSprite.special;
+            specialAttack(ai, player);
+            aiSpecialCharge = 0;
+          }
+        }, 1000);
+
+        setInterval(() => {
+          // Main game loop
+          if (!gameInProgress) return;
+
+          // Player movement
+          const moveRight = keyboardState.ArrowRight;
+          const moveLeft = keyboardState.ArrowLeft;
+          if (moveRight) {
+            player.style.left = `${player.offsetLeft + 5}px`;
+          } else if (moveLeft) {
+            player.style.left = `${player.offsetLeft - 5}px`;
+          }
+
+          // Player Jump
+          if (player.offsetTop + player.offsetHeight < containerBottom) {
+            playerYVelocity += gravity;
+          } else if (playerYVelocity > 0) {
+            playerYVelocity = 0;
+          }
+          player.style.top = `${Math.min(
+            player.offsetTop + playerYVelocity,
+            containerBottom - player.offsetHeight
+          )}px`;
+
+          // AI Jump
+          const canAIJump = ai.offsetTop + ai.offsetHeight >= containerBottom;
+          if (Math.random() < 0.05 && canAIJump) {
+            aiYVelocity = -jumpStrength;
+          }
+          if (ai.offsetTop + ai.offsetHeight < containerBottom) {
+            aiYVelocity += gravity;
+          } else if (aiYVelocity > 0) {
+            aiYVelocity = 0;
+          }
+          ai.style.top = `${Math.min(
+            ai.offsetTop + aiYVelocity,
+            containerBottom - ai.offsetHeight
+          )}px`;
+        }, 1000 / 60); // 60 FPS
+
+        function attack(attacker, defender, damage) {
+          const distance = Math.abs(attacker.offsetLeft - defender.offsetLeft);
+          if (distance > 64) return;
+
+          if (attacker === player && isPlayerBlocking) return;
+
+          if (attacker === player) {
+            aiHP -= damage;
+            updateHealthBar(aiHealth, aiHP);
+          } else {
+            playerHP -= damage;
+            updateHealthBar(playerHealth, playerHP);
+          }
+
+          checkGameEnd();
+        }
+
+        setInterval(() => {
+          // AI movement
+          if (!gameInProgress) return;
+
+          const move = Math.random() < 0.5 ? -10 : 10;
+          ai.style.left = `${ai.offsetLeft + move}px`;
+        }, 500);
+
+        function specialAttack(attacker, defender) {
+          attack(attacker, defender, 30);
+        }
+
+        function updateHealthBar(healthBar, health) {
+          healthBar.style.width = `${health}%`;
+        }
+
+        function checkGameEnd() {
+          if (playerHP <= 0 || aiHP <= 0) {
+            gameInProgress = false;
+            alert(playerHP <= 0 ? "Elon Wins!" : "Zuck Wins!");
+          }
+        }
+
+        playAgainButton.addEventListener("click", () => {
+          playerHP = 100;
+          aiHP = 100;
+          playerSpecialCharge = 0;
+          aiSpecialCharge = 0;
+          updateHealthBar(playerHealth, playerHP);
+          updateHealthBar(aiHealth, aiHP);
+          player.style.backgroundImage = playerSprite.idle;
+          ai.style.backgroundImage = aiSprite.idle;
+          gameInProgress = true;
+        });
+      });
+    </script>
+
+    <title>Street Fighter Game</title>
+  </head>
+  <body>
+    <div id="game-container">
+      <div id="player" class="character"></div>
+      <div id="ai" class="character"></div>
+      <div id="player-health" class="health-bar">Zuck Health</div>
+      <div id="ai-health" class="health-bar">Elon Health</div>
+    </div>
+    <p>A to punch. Arrow keys to move.</p>
+    <button id="play-again">Play Again</button>
+  </body>
+</html>

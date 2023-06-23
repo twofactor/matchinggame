@@ -4,117 +4,149 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Kirby Tsum Tsum Game</title>
-    <script src="https://cdn.jsdelivr.net/npm/phaser@3.24.1/dist/phaser.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.55.2/dist/phaser.min.js"></script>
     <style>
       body {
         margin: 0;
       }
+      canvas {
+        display: block;
+        margin: auto;
+      }
     </style>
   </head>
   <body>
+    <div id="gameContainer"></div>
     <script>
-      const config = {
-        type: Phaser.AUTO,
-        width: 7 * 55,
-        height: 4 * 55,
-        backgroundColor: "transparent",
-        pixelArt: true,
-        physics: {
-          default: "matter",
-          matter: {
-            gravity: { y: 1 },
-            debug: false,
-          },
-        },
-        scene: {
-          preload: preload,
-          create: create,
-          update: update,
-        },
-      };
+      class MainTsumGame extends Phaser.Scene {
+        constructor() {
+          super("MainTsumGame");
 
-      const game = new Phaser.Game(config);
-      let selectedTsums = [];
+          this.tsumGrid = [];
+          this.selectedTsums = [];
+          this.isPointerDown = false;
+        }
 
-      function preload() {
-        this.load.image("A", "./kirby.png");
-        this.load.image("B", "./bronto.png");
-        this.load.image("C", "./waddledoo.png");
-        this.load.image("D", "./waddledee.png");
+        preload() {
+          this.load.image("A", "./kirby.png");
+          this.load.image("B", "./bronto.png");
+          this.load.image("C", "./waddledoo.png");
+          this.load.image("D", "./waddledee.png");
+        }
 
-        this.load.audio("selectTsumSound", "./text.m4a");
-        this.load.audio("clearTsumsSound", "./fly-spit.m4a");
-      }
+        create() {
+          this.matter.world.setBounds(0, 0, numCols * 55, numRows * 55);
 
-      function create() {
-        this.selectTsumSound = this.sound.add("selectTsumSound");
-        this.clearTsumsSound = this.sound.add("clearTsumsSound");
+          this.tsumGrid = new Array(numRows)
+            .fill(null)
+            .map(() => new Array(numCols).fill(null));
 
-        const tsumTypes = ["A", "B", "C", "D"];
-        this.tsums = [];
+          for (let row = 0; row < numRows; row++) {
+            for (let col = 0; col < numCols; col++) {
+              const tsumType = String.fromCharCode(
+                65 + Math.floor(Math.random() * 4)
+              );
+              const tsum = this.matter.add.image(
+                col * 50 + 25,
+                row * 50 + 25,
+                tsumType
+              );
+              tsum.setCircle(25);
+              tsum.setFriction(0.8);
+              tsum.setBounce(0.5);
 
-        // Create tsums and add them to the scene
-        for (let i = 0; i < config.width / 55; i++) {
-          for (let j = 0; j < config.height / 55; j++) {
-            const randomType = Phaser.Utils.Array.GetRandom(tsumTypes);
-            const tsum = this.add.sprite(
-              i * 55 + 27.5,
-              j * 55 + 27.5,
-              randomType
-            );
-            tsum.setInteractive();
-            tsum.on("pointerdown", (pointer) => {
-              //   this.selectTsumSound.play();
-              handleTsumSelection(tsum, this);
-            });
-            this.tsums.push(tsum);
+              tsum.type = tsumType;
+              tsum.setDepth(0);
+              this.tsumGrid[row][col] = tsum;
+
+              tsum.body.gameObject = tsum;
+            }
+          }
+
+          this.input.on("pointerdown", (pointer) => {
+            console.log("ayyy");
+            this.isPointerDown = true;
+            const tsum = this.getTsumAt(pointer.x, pointer.y);
+            if (tsum) {
+              this.selectTsum(tsum);
+            }
+          });
+
+          this.input.on("pointermove", (pointer) => {
+            if (!this.isPointerDown) return;
+            const tsum = this.getTsumAt(pointer.x, pointer.y);
+            if (tsum) {
+              this.selectTsum(tsum);
+            }
+          });
+
+          this.input.on("pointerup", () => {
+            this.isPointerDown = false;
+            this.selectedTsums = [];
+          });
+        }
+
+        getTsumAt(x, y) {
+          const bodies = this.matter.world.bodies;
+          const tsumBody = this.matter.Query.point(bodies, { x: x, y: y })[0];
+
+          if (tsumBody && tsumBody.gameObject) {
+            console.log("ayy");
+            return tsumBody.gameObject;
+          }
+          return null;
+        }
+
+        selectTsum(tsum) {
+          if (
+            this.selectedTsums.length === 0 ||
+            (this.selectedTsums[this.selectedTsums.length - 1] !== tsum &&
+              tsum.type === this.selectedTsums[0].type)
+          ) {
+            this.selectedTsums.push(tsum);
+          }
+        }
+
+        update() {
+          const graphics = this.add.graphics({
+            lineStyle: { width: 4, color: 0xffffff },
+          });
+          graphics.clear();
+
+          if (this.isPointerDown) {
+            for (let i = 0; i < this.selectedTsums.length - 1; i++) {
+              const tsum1 = this.selectedTsums[i];
+              const tsum2 = this.selectedTsums[i + 1];
+              graphics.lineBetween(tsum1.x, tsum1.y, tsum2.x, tsum2.y);
+            }
           }
         }
       }
 
-      function update() {
-        // Add any continuous checks or updates here
-      }
+      // Constants and variables
+      const numRows = 4;
+      const numCols = 7;
 
-      function handleTsumSelection(tsum, scene) {
-        if (
-          selectedTsums.length === 0 ||
-          selectedTsums[selectedTsums.length - 1].texture.key ===
-            tsum.texture.key
-        ) {
-          tsum.setTint(0x999999);
-          selectedTsums.push(tsum);
-        } else if (
-          selectedTsums.length >= 2 &&
-          selectedTsums[selectedTsums.length - 2] === tsum
-        ) {
-          const lastTsum = selectedTsums.pop();
-          lastTsum.clearTint();
-        } else {
-          clearSelectedTsums(scene);
-        }
-      }
+      // Phaser.js setup
+      const config = {
+        type: Phaser.AUTO,
+        parent: "gameContainer",
+        width: numCols * 55,
+        height: numRows * 55,
+        backgroundColor: "#1b1464",
+        pixelArt: true,
+        antialias: true,
+        physics: {
+          default: "matter",
+          matter: {
+            gravity: { y: 1 },
+            enableSleep: true,
+          },
+        },
+        scene: [MainTsumGame], // Add the MainTsumGame scene
+      };
 
-      function clearSelectedTsums(scene) {
-        if (selectedTsums.length >= 3) {
-          selectedTsums.forEach((tsum) => {
-            scene.tweens.add({
-              targets: tsum,
-              alpha: 0,
-              duration: 500,
-              onComplete: () => {
-                tsum.destroy();
-              },
-            });
-          });
-          //   scene.clearTsumsSound.play();
-        } else {
-          selectedTsums.forEach((tsum) => {
-            tsum.clearTint();
-          });
-        }
-        selectedTsums = [];
-      }
+      const game = new Phaser.Game(config);
     </script>
   </body>
 </html>

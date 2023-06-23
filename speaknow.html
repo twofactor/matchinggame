@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Web Speech API Example</title>
+  </head>
+  <body>
+    <button id="startBtn">Start Listening</button>
+    <button id="stopBtn">Stop Listening</button>
+    <div id="output"></div>
+  </body>
+
+  <script>
+    let conversationHistory = [
+      {
+        role: "system",
+        content:
+          "Pretend you are a cute cat named Talking Tom. Stay in character. Respond with very very short messages. A few notes: You will be given text that was recorded and speech-to-text, and your output will be given back as text to speech. Please do not use emojis, because your responses will be read out loud. Be fun and as creative as possible. Be aware that since the audio transcription is a bit fuzzy, sometimes you might get messages that seem confusing or are missing words. In those cases, make reasonable assumptions about what the user meant",
+      },
+    ];
+
+    // Check if the Web Speech API is supported
+    if (
+      !("webkitSpeechRecognition" in window) ||
+      !("speechSynthesis" in window)
+    ) {
+      alert(
+        "Web Speech API is not supported by your browser. Try using Chrome."
+      );
+    }
+
+    function getVoice(lang = "en-US", name = null) {
+      const voices = speechSynthesis.getVoices();
+
+      let selectedVoice = voices.find((voice) => voice.lang === lang);
+
+      if (name) {
+        const voiceByName = voices.find(
+          (voice) => voice.name === name && voice.lang === lang
+        );
+        if (voiceByName) {
+          selectedVoice = voiceByName;
+        }
+      }
+
+      return selectedVoice;
+    }
+
+    speechSynthesis.onvoiceschanged = function () {
+      const voices = speechSynthesis.getVoices();
+      console.log(voices);
+    };
+
+    // Initialize speech recognition and synthesis
+    const recognition = new webkitSpeechRecognition();
+
+    const synth = window.speechSynthesis;
+
+    // Set recognition options
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = "en-US";
+
+    // Handle recognition results
+    recognition.onresult = function (event) {
+      let interimTranscript = "";
+      for (let i = event.resultIndex; i < event.results.length; ++i) {
+        if (event.results[i].isFinal) {
+          const text = event.results[i][0].transcript;
+          recognition.stop();
+          document.getElementById("output").innerHTML = text;
+          fetchChatGptResponse(text)
+            .then((response) => {
+              speak(response);
+            })
+            .catch((error) =>
+              console.error("Error fetching ChatGPT response:", error)
+            );
+        } else {
+          interimTranscript += event.results[i][0].transcript;
+          document.getElementById("output").innerHTML = interimTranscript;
+        }
+      }
+    };
+
+    // Handle recognition errors
+    recognition.onerror = function (event) {
+      console.error(event.error);
+    };
+
+    // Start and stop recognition using the buttons
+    document
+      .getElementById("startBtn")
+      .addEventListener("click", () => recognition.start());
+    document
+      .getElementById("stopBtn")
+      .addEventListener("click", () => recognition.stop());
+
+    // Function to synthesize and speak text
+    function speak(text) {
+      const utterance = new SpeechSynthesisUtterance(text);
+      const selectedVoice = getVoice("en-GB", "Google UK English Male"); // Replace 'Google US English' with the desired voice name
+      utterance.voice = selectedVoice;
+      utterance.onend = function () {
+        recognition.start();
+      };
+      synth.speak(utterance);
+    }
+
+    async function fetchChatGptResponse(userInput) {
+      const apiKey = ""; // Replace with your actual API key
+      const apiUrl = "https://api.openai.com/v1/chat/completions";
+
+      // Add the user's message to the conversation history
+      conversationHistory.push({ role: "user", content: userInput });
+
+      const requestBody = {
+        model: "gpt-3.5-turbo",
+        messages: conversationHistory,
+      };
+
+      const response = await fetch(apiUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify(requestBody),
+      });
+
+      if (!response.ok) {
+        throw new Error(`API request failed: ${response.status}`);
+      }
+
+      const responseData = await response.json();
+      const chatGptResponse = responseData.choices[0].message.content;
+
+      // Add the assistant's response to the conversation history
+      conversationHistory.push({ role: "assistant", content: chatGptResponse });
+
+      return chatGptResponse;
+    }
+  </script>
+</html>
