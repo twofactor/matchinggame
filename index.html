@@ -19,6 +19,17 @@
         background-color: #0000c8;
       }
 
+      button {
+        height: 30px;
+        border: 1px solid white;
+        background-color: blue;
+        border-radius: 0;
+        font-family: "VT323", monospace;
+        color: white;
+        font-size: 20px;
+        font-weight: bold;
+      }
+
       #game-container {
         background-image: url("background.png");
         background-repeat: no-repeat;
@@ -27,6 +38,14 @@
         overflow: hidden;
         width: 512px;
         height: 448px;
+        position: relative;
+      }
+
+      #play-button-container {
+        position: absolute;
+        top: 180px;
+        left: 230px;
+        z-index: 100000;
       }
 
       #game-board {
@@ -35,7 +54,7 @@
         grid-template-rows: repeat(6, 50px);
         grid-gap: 5px;
         position: relative;
-        margin-top: 60px;
+        margin-top: 40px;
         margin-left: 62px;
       }
       .tsum {
@@ -70,7 +89,9 @@
     <div id="game-container">
       <div class="score" id="score-display">Score: 0</div>
       <div class="score" id="timer-display">Time: 60s</div>
-      <button id="start-button">Start</button>
+      <div id="play-button-container">
+        <button id="start-button">Start</button>
+      </div>
       <div id="game-board">
         <canvas id="overlay-canvas"></canvas>
       </div>
@@ -253,6 +274,10 @@
           createBoard();
           startTimer();
 
+          document
+            .getElementById("play-button-container")
+            .removeChild(document.getElementById("start-button"));
+
           // Add event listeners
           gameBoard.addEventListener("mousedown", handleStart);
           gameBoard.addEventListener("mouseup", handleEnd);
@@ -272,10 +297,15 @@
         const playAgainButton = document.createElement("button");
         playAgainButton.textContent = "Play Again";
         playAgainButton.id = "play-again-button";
-        document.body.appendChild(playAgainButton);
+        // document.body.appendChild(playAgainButton);
+        document
+          .getElementById("play-button-container")
+          .appendChild(playAgainButton);
 
         playAgainButton.addEventListener("click", () => {
-          document.body.removeChild(playAgainButton);
+          document
+            .getElementById("play-button-container")
+            .removeChild(playAgainButton);
           totalScore = 0;
           updateScoreDisplay(totalScore);
           gameState = "not-started";
