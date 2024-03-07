@@ -18,132 +18,332 @@
   <body>
     <div id="gameContainer"></div>
     <script>
-      class MainTsumGame extends Phaser.Scene {
-        constructor() {
-          super("MainTsumGame");
+      // helper function to check if a point is within a rectangle
+      function isPointInBounds(point, bounds) {
+        return (
+          point.x > bounds.min.x &&
+          point.x < bounds.max.x &&
+          point.y > bounds.min.y &&
+          point.y < bounds.max.y
+        );
+      }
 
-          this.tsumGrid = [];
+      // Main Game Scene
+      class GameScene extends Phaser.Scene {
+        constructor() {
+          super({ key: "GameScene" });
+
+          this.tsums = [];
           this.selectedTsums = [];
-          this.isPointerDown = false;
+          this.lineGraphics = null;
+          this.toDelete = [];
+          this.score = 0;
+          this.scoreText = null;
         }
 
         preload() {
-          this.load.image("A", "./kirby.png");
-          this.load.image("B", "./bronto.png");
-          this.load.image("C", "./waddledoo.png");
-          this.load.image("D", "./waddledee.png");
+          this.load.image("tsum1", "kirby.png");
+          this.load.image("tsum2", "waddledee.png");
+          this.load.image("tsum3", "waddledoo.png");
+          this.load.image("tsum4", "gordo.png");
+
+          // load sound effects
+          this.load.audio("selectTsum", "text.m4a");
+          this.load.audio("clearTsums", "fly-spit.m4a");
+
+          // load background music
+          this.load.audio("background", "BGM_01.m4a");
         }
 
         create() {
-          this.matter.world.setBounds(0, 0, numCols * 55, numRows * 55);
+          // play background music
+          this.sound.play("background", { loop: true, volume: 0.5 });
 
-          this.tsumGrid = new Array(numRows)
-            .fill(null)
-            .map(() => new Array(numCols).fill(null));
+          // create the line graphics object
+          this.lineGraphics = this.add.graphics({
+            lineStyle: { width: 2, color: 0xffffff },
+          });
 
-          for (let row = 0; row < numRows; row++) {
-            for (let col = 0; col < numCols; col++) {
-              const tsumType = String.fromCharCode(
-                65 + Math.floor(Math.random() * 4)
-              );
+          this.lineGraphics.setDepth(1);
+
+          // create the ground, walls, and ceiling
+          const ground = this.matter.add.rectangle(275, 500, 550, 100, {
+            isStatic: true,
+            render: { fillStyle: "#000000" },
+          });
+
+          const wall1 = this.matter.add.rectangle(25, 275, 50, 550, {
+            isStatic: true,
+            render: { fillStyle: "#000000" },
+          });
+
+          const wall2 = this.matter.add.rectangle(525, 275, 50, 550, {
+            isStatic: true,
+            render: { fillStyle: "#000000" },
+          });
+
+          // we don't need a ceiling for this game
+          // const ceiling = this.matter.add.rectangle(275, 25, 550, 50, {
+          //   isStatic: true,
+          //   render: { fillStyle: "#000000" },
+          // });
+
+          // create the score text
+          this.scoreText = this.add.text(16, 16, "Score: 0", {
+            fontSize: "24px",
+            fill: "#ffffff",
+          });
+
+          // create a grid of Tsum Tsums
+          for (let i = 0; i < 7; i++) {
+            for (let j = 0; j < 7; j++) {
+              const randomType = Math.floor(Math.random() * 4) + 1;
               const tsum = this.matter.add.image(
-                col * 50 + 25,
-                row * 50 + 25,
-                tsumType
+                50 + i * 75,
+                50 + j * 75,
+                `tsum${randomType}`,
+                null,
+                {
+                  label: "Image",
+                }
               );
               tsum.setCircle(25);
-              tsum.setFriction(0.8);
-              tsum.setBounce(0.5);
-
-              tsum.type = tsumType;
-              tsum.setDepth(0);
-              this.tsumGrid[row][col] = tsum;
-
-              tsum.body.gameObject = tsum;
+              tsum.setMass(0.5);
+              tsum.tsumType = randomType; // Assign the tsumType property
+              this.tsums.push(tsum);
             }
           }
 
-          this.input.on("pointerdown", (pointer) => {
-            console.log("ayyy");
-            this.isPointerDown = true;
-            const tsum = this.getTsumAt(pointer.x, pointer.y);
-            if (tsum) {
-              this.selectTsum(tsum);
+          // helper function to get Tsum under pointer
+          const getTsumUnderPointer = (pointer) => {
+            const tsumUnderPointer = this.tsums.find((tsum) => {
+              const bounds = tsum.getBounds();
+              return Phaser.Geom.Rectangle.Contains(
+                bounds,
+                pointer.x,
+                pointer.y
+              );
+            });
+            return tsumUnderPointer || null;
+          };
+          // helper function to add Tsum to selected Tsums array
+          const addTsumToSelected = (pointer) => {
+            const tsumUnderPointer = getTsumUnderPointer(pointer);
+
+            if (
+              tsumUnderPointer &&
+              !this.selectedTsums.includes(tsumUnderPointer) &&
+              !this.toDelete.includes(tsumUnderPointer)
+            ) {
+              if (this.selectedTsums.length === 0) {
+                // If no Tsums are selected, start a new selection chain with the current Tsum
+                this.selectedTsums.push(tsumUnderPointer);
+                this.sound.play("selectTsum");
+
+                this.tweens.add({
+                  targets: tsumUnderPointer,
+                  scale: { from: tsumUnderPointer.scale, to: 1.2 },
+                  duration: 300,
+                  yoyo: false,
+                  repeat: 0,
+                  ease: "Elastic.easeOut",
+                });
+              } else {
+                // Check if the Tsum is within a certain radius of the last selected Tsum and has the same type
+                const lastSelectedTsum =
+                  this.selectedTsums[this.selectedTsums.length - 1];
+                const distance = Phaser.Math.Distance.Between(
+                  tsumUnderPointer.x,
+                  tsumUnderPointer.y,
+                  lastSelectedTsum.x,
+                  lastSelectedTsum.y
+                );
+                const threshold = 100; // Adjust this value to change the selection radius
+
+                if (
+                  distance <= threshold &&
+                  tsumUnderPointer.tsumType === this.selectedTsums[0].tsumType
+                ) {
+                  this.selectedTsums.push(tsumUnderPointer);
+                  this.sound.play("selectTsum");
+
+                  this.tweens.add({
+                    targets: tsumUnderPointer,
+                    scale: { from: tsumUnderPointer.scale, to: 1.2 },
+                    duration: 300,
+                    yoyo: false,
+                    repeat: 0,
+                    ease: "Elastic.easeOut",
+                  });
+                }
+              }
             }
+          };
+
+          // helper function to remove selected Tsums from the game
+          const removeSelectedTsums = () => {
+            this.toDelete.push(...this.selectedTsums);
+
+            addNewTsums(this.selectedTsums.length);
+
+            // Calculate score based on the number of Tsums in the chain
+            const chainLength = this.selectedTsums.length;
+            const scoreIncrement = chainLength * (chainLength - 1) * 10; // Non-linear scoring
+            this.score += scoreIncrement;
+            this.scoreText.setText("Score: " + this.score);
+
+            this.selectedTsums.forEach((tsum, index) => {
+              setTimeout(() => {
+                this.tweens.add({
+                  targets: tsum,
+                  alpha: 0,
+                  duration: 25,
+                  onComplete: () => {
+                    this.sound.play("clearTsums");
+                    this.tsums = this.tsums.filter((t) => t !== tsum);
+                    tsum.destroy();
+                  },
+                });
+              }, 125 * index);
+            });
+          };
+
+          // helper function to add new Tsums from the top
+          const addNewTsums = (count) => {
+            for (let i = 0; i < count; i++) {
+              const randomType = Math.floor(Math.random() * 4) + 1;
+              const isLarge = Math.random() < 0.1; // 10% chance of spawning a large Tsum
+              const tsum = this.matter.add.image(
+                50 + Math.floor(Math.random() * 7) * 75,
+                -50,
+                `tsum${randomType}`,
+                null,
+                {
+                  label: "Image",
+                }
+              );
+              tsum.setCircle(25); // Set the size based on isLarge
+              tsum.setMass(0.5); // Set the mass based on isLarge
+              tsum.tsumType = randomType; // Assign the tsumType property
+              tsum.isLarge = isLarge; // Assign the isLarge property
+              if (isLarge) {
+                tsum.setScale(2); // Double the size of large Tsums
+              }
+              this.tsums.push(tsum);
+            }
+          };
+
+          // input event listeners
+          this.input.on("pointerdown", (pointer) => {
+            addTsumToSelected(pointer);
           });
 
           this.input.on("pointermove", (pointer) => {
-            if (!this.isPointerDown) return;
-            const tsum = this.getTsumAt(pointer.x, pointer.y);
-            if (tsum) {
-              this.selectTsum(tsum);
+            if (pointer.isDown) {
+              // get intermediate points along the swipe path
+              const interpolatedPoints = pointer.getInterpolatedPosition(20);
+
+              // check for Tsums at each intermediate point
+              interpolatedPoints.forEach((point) => {
+                addTsumToSelected(point);
+              });
             }
           });
 
           this.input.on("pointerup", () => {
-            this.isPointerDown = false;
+            if (this.selectedTsums.length > 1) {
+              removeSelectedTsums();
+              this.selectedTsums = [];
+            } else {
+              // Return the selected Tsums to normal size
+              this.selectedTsums.forEach((tsum) => {
+                this.tweens.add({
+                  targets: tsum,
+                  scale: 1,
+                  duration: 300,
+                  ease: "Elastic.easeOut",
+                });
+              });
+              this.selectedTsums = [];
+            }
+          });
+
+          this.input.on("pointerout", () => {
             this.selectedTsums = [];
           });
         }
 
-        getTsumAt(x, y) {
-          const bodies = this.matter.world.bodies;
-          const tsumBody = this.matter.Query.point(bodies, { x: x, y: y })[0];
-
-          if (tsumBody && tsumBody.gameObject) {
-            console.log("ayy");
-            return tsumBody.gameObject;
-          }
-          return null;
-        }
-
-        selectTsum(tsum) {
-          if (
-            this.selectedTsums.length === 0 ||
-            (this.selectedTsums[this.selectedTsums.length - 1] !== tsum &&
-              tsum.type === this.selectedTsums[0].type)
-          ) {
-            this.selectedTsums.push(tsum);
-          }
-        }
-
         update() {
-          const graphics = this.add.graphics({
-            lineStyle: { width: 4, color: 0xffffff },
-          });
-          graphics.clear();
+          // clear previous frame's lines
+          this.lineGraphics.clear();
 
-          if (this.isPointerDown) {
-            for (let i = 0; i < this.selectedTsums.length - 1; i++) {
-              const tsum1 = this.selectedTsums[i];
-              const tsum2 = this.selectedTsums[i + 1];
-              graphics.lineBetween(tsum1.x, tsum1.y, tsum2.x, tsum2.y);
-            }
+          // draw lines between selected Tsums
+          if (this.selectedTsums.length > 1) {
+            this.lineGraphics.lineStyle(2, 0xffffff, 1);
+            this.lineGraphics.beginPath();
+            this.lineGraphics.moveTo(
+              this.selectedTsums[0].x,
+              this.selectedTsums[0].y
+            );
+
+            this.selectedTsums.forEach((tsum, index) => {
+              if (index > 0) {
+                this.lineGraphics.lineTo(tsum.x, tsum.y);
+              }
+            });
+
+            this.lineGraphics.strokePath();
+          }
+
+          // Make the selected Tsums follow the pointer slightly
+          if (this.selectedTsums.length > 0) {
+            const pointerX = this.input.activePointer.x;
+            const pointerY = this.input.activePointer.y;
+
+            const selectedTsumsLength = this.selectedTsums.length;
+
+            this.selectedTsums.forEach((tsum, index) => {
+              // 0.1 for last Tsum, 0.01 tc.
+
+              let followStrength;
+
+              // prevent division by zero
+              if (selectedTsumsLength - index === 0) {
+                followStrength = 0.05;
+              } else {
+                followStrength = 0.05;
+              }
+
+              const dx = pointerX - tsum.x;
+              const dy = pointerY - tsum.y;
+
+              tsum.x += dx * followStrength;
+              tsum.y += dy * followStrength;
+            });
           }
         }
       }
 
-      // Constants and variables
-      const numRows = 4;
-      const numCols = 7;
-
-      // Phaser.js setup
+      // Phaser game configuration
       const config = {
         type: Phaser.AUTO,
         parent: "gameContainer",
-        width: numCols * 55,
-        height: numRows * 55,
+        width: 550,
+        height: 550,
         backgroundColor: "#1b1464",
         pixelArt: true,
-        antialias: true,
+        scale: {
+          mode: Phaser.Scale.FIT,
+          autoCenter: Phaser.Scale.CENTER_BOTH,
+        },
+        antialias: false,
         physics: {
           default: "matter",
           matter: {
-            gravity: { y: 1 },
-            enableSleep: true,
+            gravity: { y: 2 },
           },
         },
-        scene: [MainTsumGame], // Add the MainTsumGame scene
+        scene: [GameScene],
       };
 
       const game = new Phaser.Game(config);

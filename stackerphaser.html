@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Basic Sandwich Stacker</title>
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.55.2/dist/phaser.min.js"></script>
+    <style>
+      body {
+        margin: 0;
+        overflow: hidden;
+      }
+    </style>
+  </head>
+  <body>
+    <script>
+      const config = {
+        type: Phaser.AUTO,
+        width: 480,
+        height: 600,
+        scene: {
+          preload: preload,
+          create: create,
+          update: update,
+        },
+        physics: {
+          default: "arcade",
+          arcade: {
+            gravity: { y: 0 },
+            debug: false,
+          },
+        },
+      };
+
+      const game = new Phaser.Game(config);
+
+      let stacker;
+      let ingredients;
+      let badItems;
+      let score = 0;
+      let ickScore = 0;
+      let stack = [];
+      let stackHeight = 0;
+
+      function preload() {
+        this.load.image("stacker", "kirby.png");
+        this.load.image("ingredient", "bread.png");
+        this.load.image("badItem", "gordo.png");
+      }
+
+      function create() {
+        // Add a colored background
+        const backgroundColor = 0x87ceeb; // Sky blue color
+        const background = this.add.graphics();
+        background.fillStyle(backgroundColor, 1);
+        background.fillRect(
+          0,
+          0,
+          this.game.config.width,
+          this.game.config.height
+        );
+
+        stacker = this.physics.add.sprite(240, 550, "stacker");
+        ingredients = this.physics.add.group();
+        badItems = this.physics.add.group();
+
+        this.input.on("pointermove", (pointer) => {
+          stacker.x = pointer.x;
+        });
+
+        this.scoreText = this.add.text(10, 10, "Score: 0", {
+          fontSize: "20px",
+          fill: "#ffffff",
+        });
+
+        this.ickScoreText = this.add.text(10, 40, "Icks: 0", {
+          fontSize: "20px",
+          fill: "#ffffff",
+        });
+      }
+
+      function update() {
+        if (Math.random() < 0.02) spawnIngredient(this);
+        if (Math.random() < 0.01) spawnBadItem(this);
+
+        this.physics.overlap(stacker, ingredients, (stacker, ingredient) => {
+          ingredient.disableBody(true, true);
+          score++;
+          this.scoreText.setText("Score: " + score);
+
+          const bread = this.physics.add.sprite(
+            stacker.x,
+            stacker.y - stackHeight,
+            "ingredient"
+          );
+          stack.push(bread);
+          stackHeight += bread.height;
+        });
+
+        this.physics.overlap(stacker, badItems, (stacker, badItem) => {
+          badItem.disableBody(true, true);
+          ickScore++;
+          this.ickScoreText.setText("Icks: " + ickScore);
+
+          if (ickScore >= 3) {
+            alert("Game over! Your score is: " + score);
+            this.scene.restart();
+          }
+        });
+
+        stack.forEach((bread, index) => {
+          bread.x = stacker.x;
+          bread.y = stacker.y - bread.height * (index + 1);
+        });
+      }
+
+      function spawnIngredient(scene) {
+        const x = Phaser.Math.Between(0, scene.game.config.width - 32);
+        const ingredient = scene.physics.add.sprite(x, -32, "ingredient");
+        ingredients.add(ingredient);
+        ingredient.setVelocityY(200);
+      }
+
+      function spawnBadItem(scene) {
+        const x = Phaser.Math.Between(0, scene.game.config.width - 32);
+        const badItem = scene.physics.add.sprite(x, -32, "badItem");
+        badItems.add(badItem);
+        badItem.setVelocityY(100);
+      }
+    </script>
+  </body>
+</html>
